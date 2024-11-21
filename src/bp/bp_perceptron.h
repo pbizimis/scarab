@@ -22,5 +22,6 @@ void init_branch_predictor(void);
 void clean_branch_predictor(void);
 Flag get_prediction(Addr branch_address);
 int32 calculate_perceptron(int32* weigths);
+void train_perceptron(int32* weights, Flag t, int32 y_out);
 
 #endif
