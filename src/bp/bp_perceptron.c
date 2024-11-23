@@ -3,7 +3,7 @@
 
 struct PerceptronBranchPredictor pbp;
 
-void init_branch_predictor() {
+void bp_perceptron_init() {
   pbp.history_length          = HISTORY_LENGTH;
   pbp.perceptron_table_length = PERCEPTRON_TABLE_LENGTH;
   pbp.theta                   = THETA;
@@ -15,12 +15,9 @@ void init_branch_predictor() {
                   sizeof(int32) * (pbp.history_length + 1));
 }
 
-void clean_branch_predictor() {
-  hash_table_clear(&pbp.perceptron_table);
-}
-
-Flag get_prediction(Addr branch_address) {
+uns8 bp_perceptron_pred(Op* op) {
   Flag   new_entry;
+  Addr   branch_address = 0;
   int32* weights = hash_table_access_create(&pbp.perceptron_table,
                                             branch_address, &new_entry);
   if(new_entry) {
@@ -58,8 +55,11 @@ int32 calculate_perceptron(int32* weights) {
       */
 }
 
-void train_perceptron(int32* weights, Flag t, int32 y_out) {
-  Flag y = (y_out >= 0) ? 1 : 0;
+void bp_perceptron_update(Op* op) {
+  int32* weights = 0;
+  Flag   t = 0;
+  int32  y_out = 0;
+  Flag   y = (y_out >= 0) ? 1 : 0;
 
   if(y != t || abs(y_out) <= pbp.theta) {
     int32 t_val = (t == 1) ? 1 : -1;
@@ -76,4 +76,12 @@ void train_perceptron(int32* weights, Flag t, int32 y_out) {
   pbp.global_history_register = (pbp.global_history_register << 1) | (t & 0x1);
   // mask to correct length
   pbp.global_history_register &= (1 << pbp.history_length) - 1;
+}
+
+void bp_perceptron_timestamp(Op* op) {}
+void bp_perceptron_recover(Recovery_Info* info) {}
+void bp_perceptron_spec_update(Op* op) {}
+void bp_perceptron_retire(Op* op) {}
+uns8 bp_perceptron_full(uns proc_id) {
+  return 0;
 }

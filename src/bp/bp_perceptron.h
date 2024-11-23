@@ -1,6 +1,7 @@
 #ifndef __PERCEP_H_
 #define __PERCEP_H_
 
+#include "../bp/bp.h"
 #include "../globals/global_types.h"
 #include "../libs/hash_lib.h"
 
@@ -18,10 +19,15 @@ struct PerceptronBranchPredictor {
   int32      theta;
 };
 
-void init_branch_predictor(void);
-void clean_branch_predictor(void);
-Flag get_prediction(Addr branch_address);
+void  bp_perceptron_init(void);
+uns8  bp_perceptron_pred(Op*);
 int32 calculate_perceptron(int32* weigths);
-void train_perceptron(int32* weights, Flag t, int32 y_out);
+void  bp_perceptron_update(Op*);
+
+void bp_perceptron_timestamp(Op* op);
+void bp_perceptron_recover(Recovery_Info* info);
+void bp_perceptron_spec_update(Op* op);
+void bp_perceptron_retire(Op* op);
+uns8 bp_perceptron_full(uns proc_id);
 
 #endif

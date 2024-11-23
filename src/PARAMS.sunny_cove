@@ -1,7 +1,7 @@
 # File         : PARAMS.sunny_cove
 # Date         : 05/12/23
 # Description  : Sunny Cove Configuration
-# 
+#
 # Based on documentation found here:
 # https://en.wikichip.org/wiki/intel/microarchitectures/sunny_cove
 
@@ -34,7 +34,7 @@
 --cfs_per_cycle                 6                         # Number of branches that can be predicted in a single cycle
 --bp_update_at_retire           0                         # Update the BP at retire. If false, update at the end of exec.
 --update_bp_off_path            1                         # Allow off path ops to update branch predictor state (e.g., ops when they complete exec stage).
---bp_mech                       tage64k
+--bp_mech                       perceptron
 
 
 #### BTB
@@ -44,7 +44,7 @@
 --btb_entries                   8192
 --btb_assoc                     4
 
-# Allow the BTB to be updated by off path ops. 
+# Allow the BTB to be updated by off path ops.
 --btb_off_path_writes           1
 
 # NT branches are not inserted in BTB, but do not trigger resteer
@@ -60,7 +60,7 @@
 
 ### iBP
 --enable_ibp                    1                         # Enable the indirect branch predictor
---ibtb_mech                     tc_tagged                 
+--ibtb_mech                     tc_tagged
                                                           # iBTB Model. tc_tagless, tc_tagged, tc_hybrid.
 --ibtb_off_path_writes          1                         # Allow off path ops to update the ibtb.
 --tc_entries                    4096
@@ -147,7 +147,7 @@
 --stream_length                 64
 --stream_prefetch_n             4
 --stream_start_dis              1
---stream_train_num              4	
+--stream_train_num              4
 --stream_create_on_dc_miss      0
 --stream_create_on_l1_miss      1
 
@@ -187,28 +187,28 @@
 --ramulator_chip_width		8
 --ramulator_rows		65536
 --ramulator_cols		1024
---ramulator_scheduling_policy	FRFCFS_Cap		
---ramulator_readq_entries	32		
---ramulator_writeq_entries	32		
---ramulator_record_cmd_trace	FALSE		
---ramulator_print_cmd_trace	FALSE		
+--ramulator_scheduling_policy	FRFCFS_Cap
+--ramulator_readq_entries	32
+--ramulator_writeq_entries	32
+--ramulator_record_cmd_trace	FALSE
+--ramulator_print_cmd_trace	FALSE
 --ramulator_tCK			833333
---ramulator_tCL			16		
---ramulator_tCCD		6		
---ramulator_tCCDS		4		
---ramulator_tCCDL		6		
---ramulator_tCWL		12		
---ramulator_tBL			4		
---ramulator_tWTR		9		
---ramulator_tWTRS		3		
---ramulator_tWTRL		9		
---ramulator_tRP			16		
---ramulator_tRPpb		16		
---ramulator_tRPab		16		
---ramulator_tRCD		16		
---ramulator_tRCDR		16		
---ramulator_tRCDW		16		
---ramulator_tRAS		39		
+--ramulator_tCL			16
+--ramulator_tCCD		6
+--ramulator_tCCDS		4
+--ramulator_tCCDL		6
+--ramulator_tCWL		12
+--ramulator_tBL			4
+--ramulator_tWTR		9
+--ramulator_tWTRS		3
+--ramulator_tWTRL		9
+--ramulator_tRP			16
+--ramulator_tRPpb		16
+--ramulator_tRPab		16
+--ramulator_tRCD		16
+--ramulator_tRCDR		16
+--ramulator_tRCDW		16
+--ramulator_tRAS		39
 --dram_tech_in_nm		32
 
 ## Other
