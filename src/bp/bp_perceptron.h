@@ -21,7 +21,7 @@ struct PerceptronBranchPredictor {
 
 void  bp_perceptron_init(void);
 uns8  bp_perceptron_pred(Op*);
-int32 calculate_perceptron(int32* weigths);
+int32 calculate_perceptron(Op* op, int32* weigths);
 void  bp_perceptron_update(Op*);
 
 void bp_perceptron_timestamp(Op* op);
