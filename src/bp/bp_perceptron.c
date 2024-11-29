@@ -1,13 +1,28 @@
 #include "bp_perceptron.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include "../debug/debug_macros.h"
 #include "../debug/debug_print.h"
 #include "core.param.h"
+#include "globals/assert.h"
 
 #define DEBUG(proc_id, args...) _DEBUG(proc_id, DEBUG_BP, ##args)
 
 struct PerceptronBranchPredictor* perceptron_states;
 static uns                        test_counter = 0;
+
+int32* get_weights(struct PerceptronBranchPredictor* perc_state, Addr addr) {
+  Flag   new_entry;
+  int32* weights = hash_table_access_create(&perc_state->perceptron_table, addr,
+                                            &new_entry);
+  if(new_entry) {
+    weights[0] = 0;
+    for(int i = 1; i < perc_state->history_length + 1; i++) {
+      weights[i] = 0;
+    }
+  }
+  return weights;
+}
 
 void bp_perceptron_init() {
   test_counter++;
@@ -37,32 +52,31 @@ void bp_perceptron_cleanup() {
 
 
 uns8 bp_perceptron_pred(Op* op) {
-  DEBUG(op->proc_id, "\nPERCEPTRON PRED\n");
-  Flag   new_entry;
-  Addr   branch_address = 0;
-  int32* weights        = hash_table_access_create(
-    &perceptron_states[op->proc_id].perceptron_table, branch_address,
-    &new_entry);
-  if(new_entry) {
-    weights[0] = 0;
-    for(int i = 1; i < perceptron_states[op->proc_id].history_length + 1; i++) {
-      // could be changed to random values for faster learning
-      weights[i] = 0;
-    }
-  }
+  struct PerceptronBranchPredictor* perc_state =
+    &perceptron_states[op->proc_id];
+  const Addr   addr    = op->oracle_info.pred_addr;
+  const int32* weights = get_weights(perc_state, addr);
 
-  int32 taken = calculate_perceptron(op, weights);
+  int32 y_out = calculate_perceptron(perc_state, weights);
+
+  struct PerceptronBranchMetadata* metadata = (struct PerceptronBranchMetadata*)
+                                                op->recovery_info.branch_id;
+  metadata->global_history_register_copy = perc_state->global_history_register;
+  metadata->y_out                        = y_out;
 
 
-  return taken;
+  if(y_out >= 0)
+    return 1;
+  else
+    return 0;
 }
 
-int32 calculate_perceptron(Op* op, int32* weights) {
+int32 calculate_perceptron(struct PerceptronBranchPredictor* perc_state,
+                           const int32*                      weights) {
   int32 result = 0;
   result += weights[0];
-  for(int i = 1; i < perceptron_states[op->proc_id].history_length + 1; i++) {
-    if((perceptron_states[op->proc_id].global_history_register >> (i - 1)) &
-       0x01) {
+  for(int i = 1; i < perc_state->history_length + 1; i++) {
+    if((perc_state->global_history_register >> (i - 1)) & 0x01) {
       result += weights[i];
     } else {
       result -= weights[i];
@@ -70,52 +84,56 @@ int32 calculate_perceptron(Op* op, int32* weights) {
   }
 
   return result;
-
-  /*
-    if(result >= 0)
-      return 1;
-    else
-      return 0;
-      */
 }
 
 void bp_perceptron_update(Op* op) {
-  DEBUG(op->proc_id, "\nPERCEPTRON UPDATE\n");
-  DEBUG(op->proc_id, "\nPROC_ID %d\n", op->proc_id);
-  DEBUG(op->proc_id, "\nNUM_CORES %d\n", NUM_CORES);
-  DEBUG(op->proc_id, "\nINIT: %d\n", test_counter);
-  DEBUG(op->proc_id, "\n %lld \n", op->inst_info->addr);
+  struct PerceptronBranchPredictor* perc_state =
+    &perceptron_states[op->proc_id];
+  const Addr addr = op->oracle_info.pred_addr;
 
+  struct PerceptronBranchMetadata* metadata = (struct PerceptronBranchMetadata*)
+                                                op->recovery_info.branch_id;
+  uns64  history_copy = metadata->global_history_register_copy;
+  int32  y_out        = metadata->y_out;
+  int32* weights      = get_weights(perc_state, addr);
 
-  int32* weights = 0;
-  Flag   t       = 0;
-  int32  y_out   = 0;
-  Flag   y       = (y_out >= 0) ? 1 : 0;
+  Flag t = op->oracle_info.dir;
+  Flag y = (y_out >= 0) ? 1 : 0;
+  if(y != t)
+    DEBUG(op->proc_id, "BRANCH MISPREDICTED\n");
+  else
+    DEBUG(op->proc_id, "BRANCH PREDICTED\n");
 
-  if(y != t || abs(y_out) <= perceptron_states[op->proc_id].theta) {
+  // use history from point of prediction (not global history) for training
+  if(y != t || abs(y_out) <= perc_state->theta) {
     int32 t_val = (t == 1) ? 1 : -1;
 
     weights[0] += t_val;
 
-    for(int i = 1; i < perceptron_states[op->proc_id].history_length + 1; i++) {
-      int32 x_i = ((perceptron_states[op->proc_id].global_history_register >>
-                    (i - 1)) &
-                   0x01) ?
-                    1 :
-                    -1;
+    for(int i = 1; i < perc_state->history_length + 1; i++) {
+      int32 x_i = ((history_copy >> (i - 1)) & 0x01) ? 1 : -1;
       weights[i] += t_val * x_i;
     }
   }
 
-  // add new branch target to history
-  perceptron_states[op->proc_id].global_history_register =
-    (perceptron_states[op->proc_id].global_history_register << 1) | (t & 0x1);
+  free(metadata);
+
+  // add new branch target to global history
+  perc_state->global_history_register = (perc_state->global_history_register
+                                         << 1) |
+                                        (t & 0x1);
   // mask to correct length
-  perceptron_states[op->proc_id].global_history_register &=
-    (1 << perceptron_states[op->proc_id].history_length) - 1;
+  perc_state->global_history_register &= (1ULL << perc_state->history_length) -
+                                         1;
 }
 
-void bp_perceptron_timestamp(Op* op) {}
+void bp_perceptron_timestamp(Op* op) {
+  struct PerceptronBranchMetadata* metadata = (struct PerceptronBranchMetadata*)
+    malloc(sizeof(struct PerceptronBranchMetadata));
+  metadata->global_history_register_copy = 2;
+  ASSERT(op->proc_id, sizeof(uintptr_t) <= sizeof(int64));
+  op->recovery_info.branch_id = (uintptr_t)metadata;
+}
 void bp_perceptron_recover(Recovery_Info* info) {}
 void bp_perceptron_spec_update(Op* op) {}
 void bp_perceptron_retire(Op* op) {}

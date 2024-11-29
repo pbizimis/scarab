@@ -6,7 +6,7 @@
 #include "../libs/hash_lib.h"
 
 /************ PUT IN ARCH DEF ****************/
-#define HISTORY_LENGTH 64
+#define HISTORY_LENGTH 59
 #define PERCEPTRON_TABLE_LENGTH 1024
 #define THETA 127  // value from paper
 /************ PUT IN ARCH DEF ****************/
@@ -19,10 +19,17 @@ struct PerceptronBranchPredictor {
   int32      theta;
 };
 
-void  bp_perceptron_init(void);
-uns8  bp_perceptron_pred(Op*);
-int32 calculate_perceptron(Op* op, int32* weigths);
-void  bp_perceptron_update(Op*);
+struct PerceptronBranchMetadata {
+  uns64 global_history_register_copy;
+  int32 y_out;
+};
+
+void   bp_perceptron_init(void);
+uns8   bp_perceptron_pred(Op*);
+int32  calculate_perceptron(struct PerceptronBranchPredictor* perc_state,
+                            const int32*                      weigths);
+void   bp_perceptron_update(Op*);
+int32* get_weights(struct PerceptronBranchPredictor* perc_state, Addr addr);
 
 void bp_perceptron_timestamp(Op* op);
 void bp_perceptron_recover(Recovery_Info* info);
