@@ -36,7 +36,8 @@ void bp_perceptron_init() {
     perceptron_states[i].history_length          = HISTORY_LENGTH;
     perceptron_states[i].perceptron_table_length = PERCEPTRON_TABLE_LENGTH;
     perceptron_states[i].theta                   = THETA;
-    perceptron_states[i].global_history_register = 0;
+    for(int j = 0; j < perceptron_states[i].history_length; j++)
+      perceptron_states[i].global_history[j] = 0;
 
     init_hash_table(&perceptron_states[i].perceptron_table, "Perceptron Table",
                     perceptron_states[i].perceptron_table_length,
@@ -61,8 +62,9 @@ uns8 bp_perceptron_pred(Op* op) {
 
   struct PerceptronBranchMetadata* metadata = (struct PerceptronBranchMetadata*)
                                                 op->recovery_info.branch_id;
-  metadata->global_history_register_copy = perc_state->global_history_register;
-  metadata->y_out                        = y_out;
+  memcpy(metadata->global_history_copy, perc_state->global_history,
+         perc_state->history_length);
+  metadata->y_out = y_out;
 
 
   if(y_out >= 0)
@@ -75,11 +77,11 @@ int32 calculate_perceptron(struct PerceptronBranchPredictor* perc_state,
                            const int32*                      weights) {
   int32 result = 0;
   result += weights[0];
-  for(int i = 1; i < perc_state->history_length + 1; i++) {
-    if((perc_state->global_history_register >> (i - 1)) & 0x01) {
-      result += weights[i];
+  for(int i = 0; i < perc_state->history_length; i++) {
+    if(perc_state->global_history[i]) {
+      result += weights[i + 1];
     } else {
-      result -= weights[i];
+      result -= weights[i + 1];
     }
   }
 
@@ -93,7 +95,7 @@ void bp_perceptron_update(Op* op) {
 
   struct PerceptronBranchMetadata* metadata = (struct PerceptronBranchMetadata*)
                                                 op->recovery_info.branch_id;
-  uns64  history_copy = metadata->global_history_register_copy;
+  uns8*  history_copy = metadata->global_history_copy;
   int32  y_out        = metadata->y_out;
   int32* weights      = get_weights(perc_state, addr);
 
@@ -110,27 +112,27 @@ void bp_perceptron_update(Op* op) {
 
     weights[0] += t_val;
 
-    for(int i = 1; i < perc_state->history_length + 1; i++) {
-      int32 x_i = ((history_copy >> (i - 1)) & 0x01) ? 1 : -1;
-      weights[i] += t_val * x_i;
+    for(int i = 0; i < perc_state->history_length; i++) {
+      int32 x_i = history_copy[i] ? 1 : -1;
+      weights[i + 1] += t_val * x_i;
     }
   }
 
   free(metadata);
 
   // add new branch target to global history
-  perc_state->global_history_register = (perc_state->global_history_register
-                                         << 1) |
-                                        (t & 0x1);
-  // mask to correct length
-  perc_state->global_history_register &= (1ULL << perc_state->history_length) -
-                                         1;
+  uns8 t_new = t;
+  uns8 t_old;
+  for(int i = 0; i < perc_state->history_length; i++) {
+    t_old                         = perc_state->global_history[i];
+    perc_state->global_history[i] = t_new;
+    t_new                         = t_old;
+  }
 }
 
 void bp_perceptron_timestamp(Op* op) {
   struct PerceptronBranchMetadata* metadata = (struct PerceptronBranchMetadata*)
     malloc(sizeof(struct PerceptronBranchMetadata));
-  metadata->global_history_register_copy = 2;
   ASSERT(op->proc_id, sizeof(uintptr_t) <= sizeof(int64));
   op->recovery_info.branch_id = (uintptr_t)metadata;
 }

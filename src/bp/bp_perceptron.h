@@ -12,7 +12,7 @@
 /************ PUT IN ARCH DEF ****************/
 
 struct PerceptronBranchPredictor {
-  uns64      global_history_register;
+  uns8       global_history[HISTORY_LENGTH];
   Hash_Table perceptron_table;
   int32      history_length;
   int32      perceptron_table_length;
@@ -20,7 +20,7 @@ struct PerceptronBranchPredictor {
 };
 
 struct PerceptronBranchMetadata {
-  uns64 global_history_register_copy;
+  uns8  global_history_copy[HISTORY_LENGTH];
   int32 y_out;
 };
 
