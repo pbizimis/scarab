@@ -9,7 +9,6 @@
 #define DEBUG(proc_id, args...) _DEBUG(proc_id, DEBUG_BP, ##args)
 
 struct PerceptronBranchPredictor* perceptron_states;
-static uns                        test_counter = 0;
 
 int32* get_weights(struct PerceptronBranchPredictor* perc_state, Addr addr) {
   Flag   new_entry;
@@ -25,7 +24,6 @@ int32* get_weights(struct PerceptronBranchPredictor* perc_state, Addr addr) {
 }
 
 void bp_perceptron_init() {
-  test_counter++;
   perceptron_states = (struct PerceptronBranchPredictor*)malloc(
     NUM_CORES * sizeof(struct PerceptronBranchPredictor));
   if(perceptron_states == NULL) {
@@ -115,6 +113,10 @@ void bp_perceptron_update(Op* op) {
     for(int i = 0; i < perc_state->history_length; i++) {
       int32 x_i = history_copy[i] ? 1 : -1;
       weights[i + 1] += t_val * x_i;
+      if(weights[i + 1] > perc_state->theta)
+        weights[i + 1] = perc_state->theta;
+      if(weights[i + 1] < (perc_state->theta * -1))
+        weights[i + 1] = perc_state->theta * -1;
     }
   }
 
