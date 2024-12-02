@@ -110,9 +110,12 @@ void bp_perceptron_update(Op* op) {
 
     weights[0] += t_val;
 
+    double factor = 1;
     for(int i = 0; i < perc_state->history_length; i++) {
+      if(i > 30)
+        factor = 0.9;
       int32 x_i = history_copy[i] ? 1 : -1;
-      weights[i + 1] += t_val * x_i;
+      weights[i + 1] += t_val * x_i * factor;
       if(weights[i + 1] > perc_state->theta)
         weights[i + 1] = perc_state->theta;
       if(weights[i + 1] < (perc_state->theta * -1))

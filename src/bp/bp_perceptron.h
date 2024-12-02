@@ -6,7 +6,7 @@
 #include "../libs/hash_lib.h"
 
 /************ PUT IN ARCH DEF ****************/
-#define HISTORY_LENGTH 70
+#define HISTORY_LENGTH 90
 #define PERCEPTRON_TABLE_LENGTH 1024
 #define THETA ((int)(1.93 * HISTORY_LENGTH + 14))
 /************ PUT IN ARCH DEF ****************/
